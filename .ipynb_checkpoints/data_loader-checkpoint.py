@@ -1,204 +1,89 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "d9f1b67c-adc1-4dd2-8846-429a502675b0",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "bda59cab-2f2a-499f-b63d-5eb3c3d83ead",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "826be6ee-e493-4ddf-a8ba-86ac12396caa",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 16,
-   "id": "e0a961fb-320c-4d23-ba4e-dfafe99214ad",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Iniciando la carga del archivo 'base_final_s.csv'... Por favor, espera.\n",
-      "Carga completada exitosamente en 24.68 segundos.\n",
-      "Dimensiones del DataFrame: (5340181, 24)\n",
-      "\n",
-      "La carga del archivo base_final_s.csv se realizó con éxito.\n",
-      "   Código Departamento Nombre Departamento  Código Municipio Nombre Municipio  \\\n",
-      "0                    5           ANTIOQUIA              5001         MEDELLÍN   \n",
-      "1                    5           ANTIOQUIA              5002        ABEJORRAL   \n",
-      "2                    5           ANTIOQUIA              5004         ABRIAQUÍ   \n",
-      "3                    5           ANTIOQUIA              5021       ALEJANDRÍA   \n",
-      "4                    5           ANTIOQUIA              5030            AMAGÁ   \n",
-      "\n",
-      "  Tipo: Municipio / Isla / Área no municipalizada    longitud   Latitud  \n",
-      "0                                       Municipio  -75,581775  6,246631  \n",
-      "1                                       Municipio  -75,428739  5,789315  \n",
-      "2                                       Municipio  -76,064304  6,632282  \n",
-      "3                                       Municipio  -75,141346  6,376061  \n",
-      "4                                       Municipio  -75,702188  6,038708  \n",
-      "   Código Departamento Nombre Departamento  Código Municipio Nombre Municipio  \\\n",
-      "0                    5           ANTIOQUIA              5001         MEDELLÍN   \n",
-      "1                    5           ANTIOQUIA              5002        ABEJORRAL   \n",
-      "2                    5           ANTIOQUIA              5004         ABRIAQUÍ   \n",
-      "3                    5           ANTIOQUIA              5021       ALEJANDRÍA   \n",
-      "4                    5           ANTIOQUIA              5030            AMAGÁ   \n",
-      "\n",
-      "  Tipo: Municipio / Isla / Área no municipalizada    longitud   Latitud  \n",
-      "0                                       Municipio  -75,581775  6,246631  \n",
-      "1                                       Municipio  -75,428739  5,789315  \n",
-      "2                                       Municipio  -76,064304  6,632282  \n",
-      "3                                       Municipio  -75,141346  6,376061  \n",
-      "4                                       Municipio  -75,702188  6,038708  \n"
-     ]
-    }
-   ],
-   "source": [
-    "import pandas as pd\n",
-    "import time  # Para medir el tiempo de carga (opcional)\n",
-    "import asyncio\n",
-    "import nest_asyncio\n",
-    "from playwright.async_api import async_playwright\n",
-    "import requests\n",
-    "from bs4 import BeautifulSoup\n",
-    "\n",
-    "def cargar_base_datos(ruta):\n",
-    "    print(\"Iniciando la carga del archivo 'base_final_s.csv'... Por favor, espera.\")\n",
-    "    \n",
-    "    try:\n",
-    "        # Medir el tiempo de carga (opcional)\n",
-    "        inicio = time.time()\n",
-    "        \n",
-    "        # Cargar el archivo CSV\n",
-    "        base = pd.read_csv(ruta, sep='|', engine='c', low_memory=False)\n",
-    "        \n",
-    "        # Tiempo transcurrido (opcional)\n",
-    "        fin = time.time()\n",
-    "        tiempo_carga = fin - inicio\n",
-    "        \n",
-    "        print(f\"Carga completada exitosamente en {tiempo_carga:.2f} segundos.\")\n",
-    "        print(f\"Dimensiones del DataFrame: {base.shape}\")\n",
-    "        return base\n",
-    "    \n",
-    "    except FileNotFoundError:\n",
-    "        print(\"ERROR: No se pudo cargar el archivo. El archivo 'base_final_s.csv' no se encuentra en la ruta especificada.\")\n",
-    "        return None\n",
-    "    except pd.errors.EmptyDataError:\n",
-    "        print(\"ERROR: No se pudo cargar el archivo. El archivo 'base_final_s.csv' está vacío.\")\n",
-    "        return None\n",
-    "    except pd.errors.ParserError:\n",
-    "        print(\"ERROR: No se pudo cargar el archivo. Hay un problema con el formato del CSV (separador o estructura).\")\n",
-    "        return None\n",
-    "    except MemoryError:\n",
-    "        print(\"ERROR: No se pudo cargar el archivo. El archivo es demasiado grande para la memoria disponible.\")\n",
-    "        return None\n",
-    "    except Exception as e:\n",
-    "        print(f\"ERROR: No se pudo cargar el archivo. Detalle del error: {str(e)}\")\n",
-    "        return None\n",
-    "\n",
-    "def cargar_divipola():\n",
-    "    nest_asyncio.apply()\n",
-    "    \n",
-    "    async def download_csv_excel_from_divipola(playwright) -> pd.DataFrame:\n",
-    "        browser = await playwright.chromium.launch(headless=True)\n",
-    "        context = await browser.new_context()\n",
-    "        page = await context.new_page()\n",
-    "        await page.goto(\"https://www.datos.gov.co/Mapas-Nacionales/DIVIPOLA-C-digos-municipios/gdxc-w37w/about_data\")\n",
-    "        \n",
-    "        await page.get_by_role(\"button\", name=\"Exportar\").click()\n",
-    "        await page.get_by_test_id(\"export-type-select\").locator(\"#selected-text\").click()\n",
-    "        await page.get_by_role(\"option\", name=\"CSV para Excel\", exact=True).locator(\"div\").nth(1).click()\n",
-    "        \n",
-    "        async with page.expect_download() as download_info:\n",
-    "            await page.get_by_test_id(\"export-download-button\").click()\n",
-    "        download = await download_info.value\n",
-    "        \n",
-    "        csv_path = await download.path()\n",
-    "        df = pd.read_csv(csv_path)\n",
-    "        \n",
-    "        await context.close()\n",
-    "        await browser.close()\n",
-    "        \n",
-    "        return df\n",
-    "    \n",
-    "    async def main():\n",
-    "        global df\n",
-    "        async with async_playwright() as playwright:\n",
-    "            df = await download_csv_excel_from_divipola(playwright)\n",
-    "            print(df.head())\n",
-    "        return df\n",
-    "    \n",
-    "    return asyncio.run(main())\n",
-    "\n",
-    "if __name__ == \"__main__\":\n",
-    "    # Ruta al archivo\n",
-    "    ruta_archivo = '../01_Datos/base_final_s.csv'\n",
-    "\n",
-    "    # Ejecutar la carga\n",
-    "    base = cargar_base_datos(ruta_archivo)\n",
-    "    \n",
-    "    # Verificar si se cargó correctamente\n",
-    "    if base is not None:\n",
-    "        print(\"\\nLa carga del archivo base_final_s.csv se realizó con éxito.\")\n",
-    "    else:\n",
-    "        print(\"No se puede proceder porque la carga falló.\")\n",
-    "\n",
-    "    # Ejecutar la carga de DIVIPOLA\n",
-    "    df_divipola = cargar_divipola()\n",
-    "    print(df_divipola.head())\n"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "043a01de-0109-4b17-b563-4c794f477567",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "8fcb7c06-a353-4ab9-a023-d8021fddc6ed",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python [conda env:base] *",
-   "language": "python",
-   "name": "conda-base-py"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.12.7"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+# cargar_datos.py
+import pandas as pd
+import time
+import asyncio
+import nest_asyncio
+from playwright.async_api import async_playwright
+
+def cargar_base_datos():
+    """
+    Carga un archivo CSV pesado desde una ruta predefinida y muestra mensajes de progreso o error.
+    
+    Returns:
+        pd.DataFrame o None: DataFrame cargado o None si falla.
+    """
+    ruta = '../01_Datos/base_final_s.csv'  # Ruta fija dentro de la función
+    print("Iniciando la carga del archivo 'base_final_s.csv'... Por favor, espera.")
+    
+    try:
+        inicio = time.time()
+        base = pd.read_csv(ruta, sep='|', engine='c', low_memory=False)
+        fin = time.time()
+        tiempo_carga = fin - inicio
+        
+        print(f"Carga completada exitosamente en {tiempo_carga:.2f} segundos.")
+        print(f"Dimensiones del DataFrame: {base.shape}")
+        return base
+    
+    except FileNotFoundError:
+        print("ERROR: No se pudo cargar el archivo. El archivo 'base_final_s.csv' no se encuentra en la ruta especificada.")
+        return None
+    except pd.errors.EmptyDataError:
+        print("ERROR: No se pudo cargar el archivo. El archivo 'base_final_s.csv' está vacío.")
+        return None
+    except pd.errors.ParserError:
+        print("ERROR: No se pudo cargar el archivo. Hay un problema con el formato del CSV (separador o estructura).")
+        return None
+    except MemoryError:
+        print("ERROR: No se pudo cargar el archivo. El archivo es demasiado grande para la memoria disponible.")
+        return None
+    except Exception as e:
+        print(f"ERROR: No se pudo cargar el archivo. Detalle del error: {str(e)}")
+        return None
+
+def cargar_divipola():
+    """
+    Descarga y carga el archivo CSV de DIVIPOLA desde datos.gov.co.
+    
+    Returns:
+        pd.DataFrame: DataFrame con los datos de DIVIPOLA.
+    """
+    nest_asyncio.apply()
+    
+    async def download_csv_excel_from_divipola(playwright) -> pd.DataFrame:
+        browser = await playwright.chromium.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
+        await page.goto("https://www.datos.gov.co/Mapas-Nacionales/DIVIPOLA-C-digos-municipios/gdxc-w37w/about_data")
+        await page.get_by_role("button", name="Exportar").click()
+        await page.get_by_test_id("export-type-select").locator("#selected-text").click()
+        await page.get_by_role("option", name="CSV para Excel", exact=True).locator("div").nth(1).click()
+        
+        async with page.expect_download() as download_info:
+            await page.get_by_test_id("export-download-button").click()
+        download = await download_info.value
+        csv_path = await download.path()
+        df = pd.read_csv(csv_path)
+        
+        await context.close()
+        await browser.close()
+        return df
+    
+    async def main():
+        async with async_playwright() as playwright:
+            df = await download_csv_excel_from_divipola(playwright)
+            return df
+    
+    return asyncio.run(main())
+
+# Bloque de ejecución solo si se corre como script principal
+if __name__ == "__main__":
+    # Ejecutar la carga de base_final_s.csv
+    base = cargar_base_datos()
+    if base is not None:
+        print("\nLa carga del archivo base_final_s.csv se realizó con éxito.")
+    else:
+        print("No se puede proceder porque la carga falló.")
+    
+    # Ejecutar la carga de DIVIPOLA
+    df_divipola = cargar_divipola()

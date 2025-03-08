@@ -1,22 +1,23 @@
+# cargar_datos.py
 import pandas as pd
-import time  # Para medir el tiempo de carga (opcional)
+import time
 import asyncio
 import nest_asyncio
 from playwright.async_api import async_playwright
-import requests
-from bs4 import BeautifulSoup
 
-def cargar_base_datos(ruta):
+def cargar_base_datos():
+    """
+    Carga un archivo CSV pesado desde una ruta predefinida y muestra mensajes de progreso o error.
+    
+    Returns:
+        pd.DataFrame o None: DataFrame cargado o None si falla.
+    """
+    ruta = '../01_Datos/base_final_s.csv'  # Ruta fija dentro de la función
     print("Iniciando la carga del archivo 'base_final_s.csv'... Por favor, espera.")
     
     try:
-        # Medir el tiempo de carga (opcional)
         inicio = time.time()
-        
-        # Cargar el archivo CSV
         base = pd.read_csv(ruta, sep='|', engine='c', low_memory=False)
-        
-        # Tiempo transcurrido (opcional)
         fin = time.time()
         tiempo_carga = fin - inicio
         
@@ -41,6 +42,12 @@ def cargar_base_datos(ruta):
         return None
 
 def cargar_divipola():
+    """
+    Descarga y carga el archivo CSV de DIVIPOLA desde datos.gov.co.
+    
+    Returns:
+        pd.DataFrame: DataFrame con los datos de DIVIPOLA.
+    """
     nest_asyncio.apply()
     
     async def download_csv_excel_from_divipola(playwright) -> pd.DataFrame:
@@ -48,7 +55,6 @@ def cargar_divipola():
         context = await browser.new_context()
         page = await context.new_page()
         await page.goto("https://www.datos.gov.co/Mapas-Nacionales/DIVIPOLA-C-digos-municipios/gdxc-w37w/about_data")
-        
         await page.get_by_role("button", name="Exportar").click()
         await page.get_by_test_id("export-type-select").locator("#selected-text").click()
         await page.get_by_role("option", name="CSV para Excel", exact=True).locator("div").nth(1).click()
@@ -56,37 +62,28 @@ def cargar_divipola():
         async with page.expect_download() as download_info:
             await page.get_by_test_id("export-download-button").click()
         download = await download_info.value
-        
         csv_path = await download.path()
         df = pd.read_csv(csv_path)
         
         await context.close()
         await browser.close()
-        
         return df
     
     async def main():
-        global df
         async with async_playwright() as playwright:
             df = await download_csv_excel_from_divipola(playwright)
-            print(df.head())
-        return df
+            return df
     
     return asyncio.run(main())
 
+# Bloque de ejecución solo si se corre como script principal
 if __name__ == "__main__":
-    # Ruta al archivo
-    ruta_archivo = '../01_Datos/base_final_s.csv'
-
-    # Ejecutar la carga
-    base = cargar_base_datos(ruta_archivo)
-    
-    # Verificar si se cargó correctamente
+    # Ejecutar la carga de base_final_s.csv
+    base = cargar_base_datos()
     if base is not None:
         print("\nLa carga del archivo base_final_s.csv se realizó con éxito.")
     else:
         print("No se puede proceder porque la carga falló.")
-
+    
     # Ejecutar la carga de DIVIPOLA
     df_divipola = cargar_divipola()
-    print(df_divipola.head())
